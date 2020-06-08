@@ -58,6 +58,7 @@ namespace ForecastWebApi.Controllers
 
             //Add entry in Audit log table
             UpdateAuditlog(location);
+            
             // Pass the data into the web app
             return (string)resLocationDetails;
         }
@@ -119,12 +120,19 @@ namespace ForecastWebApi.Controllers
 
         private void UpdateAuditlog(string location)
         {
-            var newAuditlog = new AuditLog();
-            newAuditlog.SearchName = location;
-            newAuditlog.SearchTime = DateTime.Now.ToString();
+            try
+            {
+                var newAuditlog = new AuditLog();
+                newAuditlog.SearchName = location;
+                newAuditlog.SearchTime = DateTime.Now.ToString();
 
-            _dbContext.AuditLog.Add(newAuditlog);
-            _dbContext.SaveChanges();
+                _dbContext.AuditLog.Add(newAuditlog);
+                _dbContext.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message.ToString());
+            }
         }
     }
 }

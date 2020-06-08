@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using ForecastWebApi.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ForecastWebApi.Controllers
@@ -17,12 +19,20 @@ namespace ForecastWebApi.Controllers
             "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
         };
 
-        private readonly ILogger<WeatherForecastController> _logger;
+        //private readonly ILogger<WeatherForecastController> _logger;
+        private readonly forcastContext _dbContext;
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger)
+        //public WeatherForecastController(ILogger<WeatherForecastController> logger)
+        //{
+        //    _logger = logger;
+        //}
+
+        public WeatherForecastController(forcastContext dbContext)
         {
-            _logger = logger;
+            _dbContext = dbContext;
         }
+
+
 
         [HttpGet]
         public IEnumerable<WeatherForecast> Get()
@@ -45,6 +55,9 @@ namespace ForecastWebApi.Controllers
         public async Task<string> GetLocationDetails(string location)
         {
             var resLocationDetails = await GetLocation(location);
+
+            //Add entry in Audit log table
+            UpdateAuditlog(location);
             // Pass the data into the web app
             return (string)resLocationDetails;
         }
@@ -72,32 +85,7 @@ namespace ForecastWebApi.Controllers
 
                     var result = await response.Content.ReadAsStringAsync();
                     //return JsonConvert.DeserializeObject<WeatherForecast>(result);
-                    return result;
-
-                    /*
-                    // Call *metaweather*, and display its response in the page
-                    var request = new System.Net.Http.HttpRequestMessage();
-                    request.RequestUri = new Uri("https://www.metaweather.com/api/location/search/?query=" + location);
-                    var result = await client.GetAsync(request.ToString());
-                    if (result.IsSuccessStatusCode)
-                    {
-                        // Read all of the response and deserialise it into an instace of
-                        // WeatherForecast class
-                        var content = await result.Content.ReadAsStringAsync();
-                        var locationDtls = JsonConvert.DeserializeObject<WeatherForecast>(content);
-
-                        if (content.Length > 0)
-                        {
-                            request.RequestUri = new Uri("https://www.metaweather.com/api/location/" + locationDtls.Woeid);
-                            var responseforecast = await client.GetAsync(request.ToString());
-                            if (result.IsSuccessStatusCode)
-                            {
-                                var forecastcontent = await result.Content.ReadAsStringAsync();
-                                return JsonConvert.DeserializeObject<ConsolidatedWeather>(content);
-                            }
-                        }
-                    } 
-                    */
+                    return result;                    
                 }
                 catch (HttpRequestException httpRequestException)
                 {
@@ -129,6 +117,14 @@ namespace ForecastWebApi.Controllers
             }
         }
 
+        private void UpdateAuditlog(string location)
+        {
+            var newAuditlog = new AuditLog();
+            newAuditlog.SearchName = location;
+            newAuditlog.SearchTime = DateTime.Now.ToString();
 
+            _dbContext.AuditLog.Add(newAuditlog);
+            _dbContext.SaveChanges();
+        }
     }
 }

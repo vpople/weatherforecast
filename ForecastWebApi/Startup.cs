@@ -9,6 +9,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ForecastWebApi.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ForecastWebApi
 {
@@ -26,6 +28,11 @@ namespace ForecastWebApi
         {
             services.AddCors();
             services.AddControllers();
+            //services.AddTransient<forcastContext>();
+            services.AddDbContext<forcastContext>(options => {
+                options.UseMySQL(Configuration.GetConnectionString("DefaultConnection"));
+                options.EnableDetailedErrors();
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

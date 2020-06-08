@@ -12,6 +12,9 @@ Below are the prerequisits for local development:
  - Docker
  - Dotnet Core
  - aws-cli
+ 
+ Clone repository from github using below path:
+    https://github.com/vpople/weatherforecast
 
 Prerequisits for deployment:
  - Docker

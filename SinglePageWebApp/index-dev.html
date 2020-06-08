@@ -1,0 +1,111 @@
+<html>
+
+<head>
+  <title>World Temparature</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+
+<body>
+  <div style="margin: auto; width: 80%;">
+  <h2>World Temparature</h2>
+  <table border="1" width="100%">
+    <thead>
+      <tr>
+        <th colspan="3">
+          <input type="text" id="location" style="width:40%; margin:5px; background-color:#EEE;"
+            placeholder="Type location here  (Min. 3 Characters)" autocomplete="off" />
+          <button type="button" id="search">Search</button>
+        </th>
+      </tr>
+      <tr class="location-list">
+        <th>Sr. No.</th>
+        <th>Location</th>
+        <th>Location Type</th>
+      </tr>
+    </thead>
+    <tbody class="location-list" id="location-list">
+    </tbody>
+    <tbody>
+      <tr>
+        <td colspan="3">
+          <div id="weather-stats"></div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="result"></div>
+  </div>
+</body>
+<script>
+  var domainURL = "http://#DomainURL";
+  function populateLocationData(locationList) {
+    var locationHtml = '';
+    locationList = JSON.parse(locationList);
+    $(locationList).each(function(index, location){
+      locationHtml += '' + 
+        '<tr>' +
+        '<td style="text-align:center;">' + (index + 1) +'</td>' +
+        '<td><a href="#" class="location-item" data-woeid="' + location.woeid + '" >' + location.title +'</a></td>' +
+        '<td>' + location.location_type +'</td>' +
+        '</tr>';
+    });
+    $('#location-list').html(locationHtml);
+    bindLocationEvent();
+    $('.location-list').show();
+    $('#weather-stats').hide();
+  }
+  function populateWeatherData(weatherStats) {
+    weatherStats = JSON.parse(weatherStats);
+    var weatherHtml = '<table width="100%" border="1"><tr>';
+    $(weatherStats.consolidated_weather).each(function(index, stat){
+      
+      var color = '#FFF';
+      if(stat.wind_speed <= 50 && stat.wind_speed > 60) {
+        color = 'yellow';
+      } else if(stat.wind_speed <= 60 && stat.wind_speed > 70) {
+        color = '#FFC200';
+      } else if(stat.wind_speed >= 70) {
+        color = '#ff534a';
+      } 
+      weatherHtml += '' + 
+        '<td >' +
+          '<b>' + stat.applicable_date + '</b><br/><hr/>' +
+          '' + stat.weather_state_name + '<br/><hr/>' +
+          '<span style="background-color:' + color +'">Wind Speed: ' + stat.wind_speed.toFixed(2) + ' (' + stat.wind_direction_compass + ')</span><br/><hr/>' +
+          'Temp: ' + stat.min_temp.toFixed(2) + '&deg;/' + stat.max_temp.toFixed(2) +'&deg;<br/><hr/>' +
+          'Humidity: ' + stat.humidity + '<br/><hr/>' +
+          'Air Pressure:' + stat.air_pressure + '<br/>' +
+        '</td>';
+    });
+    weatherHtml += '</tr></table>';
+    $('#weather-stats').html(weatherHtml);
+    $('#weather-stats').show();
+    $('.location-list').hide();
+  }
+
+  function bindLocationEvent() {
+    $(".location-item").click(function () {
+      var woeid = $(this).attr('data-woeid');
+      $.get(domainURL + "/Weatherforecast/GetLocationForecast/" + woeid + "/", function (weatherStats) {
+        populateWeatherData(weatherStats);
+      });
+    });
+  }
+
+  $(document).ready(function () {
+    $('#weather-stats').hide();
+    $('.location-list').hide();
+    $("#search").click(function () {
+      var location = $("#location").val().trim();
+      if(!location || location.length < 3) {
+        alert('Please enter valid location.');
+        return false;
+      }
+      $.get(domainURL +"/Weatherforecast/GetLocationDetails/" + location , function (locationList) {
+        populateLocationData(locationList);
+      });
+    });
+  });
+</script>
+
+</html>

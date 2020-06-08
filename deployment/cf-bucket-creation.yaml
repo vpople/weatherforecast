@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  WeatherWebApplicationBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Sub "weather-web-app-${AWS::AccountId}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+    DeletionPolicy: Retain
+  BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      PolicyDocument:
+        Id: MyPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Join 
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref WeatherWebApplicationBucket
+                - /*
+      Bucket: !Ref WeatherWebApplicationBucket
+  WeatherWebAPIBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub "weather-web-api-${AWS::AccountId}"
+  ECRRepository:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      RepositoryName: weather-webapi-repo
+      RepositoryPolicyText:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action: '*'
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt 
+      - WeatherWebApplicationBucket
+      - WebsiteURL
+    Description: URL for website hosted on S3
+  WebAppBucketName:
+    Value: !Ref WeatherWebApplicationBucket
+    Export:
+      Name: WebAppBucketName
+      Description: Web App Bucket Name
+  WeatherWebApplicationBucketSecureURL:
+    Value: !Join 
+      - ''
+      - - 'https://'
+        - !GetAtt 
+          - WeatherWebApplicationBucket
+          - DomainName
+    Description: Name of S3 bucket to hold website content
+  WebAPIBucketName:
+    Value: !Ref WeatherWebAPIBucket
+    Export:
+      Name: WebAPIBucketName
+      Description: WebAPI Bucket Name
+  ECRRepositoryURI:
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com"
+    Export:
+      Name: ECRRepositoryURI
+      Description: ECRRepository URI
+  ECRRepositoryName:
+    Value: !Ref ECRRepository
+    Export:
+      Name: ECRRepositoryName
+      Description: ECRRepository Name

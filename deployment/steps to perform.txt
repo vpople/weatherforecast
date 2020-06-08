@@ -1,0 +1,34 @@
+s3 bucket cloadformation 
+	1. web api
+	2. Web app
+	3. ECR
+
+deploy cloudfromation
+
+Web app
+	Download code from repo
+	upload to s3
+	create variable of upload/ build path { var web app build path }
+	
+Web API 
+	Download code from repo
+	build 
+	publish
+	upload to s3 
+	create variable of upload/ build path {var web api buid path}
+	
+	Docker commands for
+		ECR login
+		Docker image build {var web api buid path}
+		Docker push to ECR
+		Create Variable for ECR build path { var ECR Build path }
+		
+
+Cloudformation 
+	Aurora RDS
+	ECS cluster
+	ECS service
+	ECS Task Defination { var ECR Build path }
+	ALB
+	Cloudfront { var web app build path }
+	

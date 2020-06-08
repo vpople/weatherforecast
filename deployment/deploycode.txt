@@ -1,0 +1,69 @@
+# to create the empty ECS cluster
+New-ECSCluster -ClusterName ECSWeatherForecast
+
+#Create an IAM policy for your EC2 container instances
+$IAMPolicy = @{
+    Path = '/ECSWeatherForecast/'
+    PolicyName = 'ECSWeatherForecastInstanceRole'
+    Description = 'This policy is used to grant EC2 instances access to ECS-related API calls. It enables EC2 instances to push and pull from ECR, and most importantly, register with our ECS Cluster.'
+    PolicyDocument = @'
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+        "Effect": "Allow",
+        "Action": [
+            "ecs:CreateCluster",
+            "ecs:DeregisterContainerInstance",
+            "ecs:DiscoverPollEndpoint",
+            "ecs:Poll",
+            "ecs:RegisterContainerInstance",
+            "ecs:StartTelemetrySession",
+            "ecs:Submit*",
+            "ecr:GetAuthorizationToken",
+            "ecr:BatchCheckLayerAvailability",
+            "ecr:GetDownloadUrlForLayer",
+            "ecr:BatchGetImage",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+        ],
+        "Resource": "*"
+        }
+    ]
+    }
+'@
+}
+New-IAMPolicy @IAMPolicy
+
+
+#Create a container instance IAM role
+$IAMRole = @{
+    RoleName = 'ECSWeatherForecast'
+    Path = '/ECSWeatherForecast/'
+    Description = 'This IAM role grants the container instances that are part of the ECSWeatherForecast ECS cluster access to various AWS services, required to operate the ECS Cluster.'
+    AssumeRolePolicyDocument = @'
+{
+    "Version": "2008-10-17",
+    "Statement": [
+        {
+        "Sid": "",
+        "Effect": "Allow",
+        "Principal": {
+            "Service": "ec2.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+        }
+    ]
+    }
+'@
+}
+New-IAMRole @IAMRole
+
+
+
+#Register the IAM policy with the IAM role
+$RolePolicy = @{
+    PolicyArn = $NewIAMPolicy.Arn
+    Role = $NewIAMRole.RoleName
+}
+Register-IAMRolePolicy @RolePolicy

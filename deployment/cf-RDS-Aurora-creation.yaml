@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  DBUsername:
+    Description: "Master user name"
+    Type: String
+    Default: "admin"
+  DBPassword:
+    Description: "Master user password"
+    Type: String
+    Default: "Admin123"
+  ImagePath:
+    Description: "Docker Web API Image path"
+    Type: String
+  VPC:
+    Type: AWS::EC2::VPC::Id
+    Default: "vpc-11d12c68"
+  ServiceName:
+    Type: String
+    Default: "ECSWeatherForecastService"
+  ContainerPort:
+    Type: Number
+    Default: 80
+  LoadBalancerPort:
+    Type: Number
+    Default: 80
+  SubnetA:
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-2f87ef75"
+  SubnetB:
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-264e6040"
+  HealthCheckPath:
+    Type: String
+    Default: /healthcheck
+Resources:
+  RDSCluster:
+    Properties:
+      DBClusterParameterGroupName:
+        Ref: RDSDBClusterParameterGroup
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+      Engine: aurora
+      MasterUserPassword:
+        Ref: DBPassword
+      MasterUsername:
+        Ref: DBUsername
+      DatabaseName: dbWeatherAudit
+    Type: "AWS::RDS::DBCluster"
+  DBSubnetGroup: 
+    Properties:
+      DBSubnetGroupDescription: "CloudFormation Subnet Group Description"
+      SubnetIds: 
+        - subnet-2f87ef75
+        - subnet-264e6040
+    Type: "AWS::RDS::DBSubnetGroup"
+  RDSDBClusterParameterGroup:
+    Properties:
+      Description: "CloudFormation Sample Aurora Cluster Parameter Group"
+      Family: aurora5.6
+      Parameters:
+        character_set_database: utf32
+    Type: "AWS::RDS::DBClusterParameterGroup"
+  RDSDBInstance1:
+    Properties:
+      AvailabilityZone: eu-west-1a
+      DBClusterIdentifier:
+        Ref: RDSCluster
+      DBInstanceClass: db.t2.small
+      DBParameterGroupName:
+        Ref: RDSDBParameterGroup
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+      Engine: aurora
+      PubliclyAccessible: "true"
+    Type: "AWS::RDS::DBInstance"
+  RDSDBInstance2:
+    Properties:
+      AvailabilityZone: eu-west-1a
+      DBClusterIdentifier:
+        Ref: RDSCluster
+      DBInstanceClass: db.t2.small
+      DBParameterGroupName:
+        Ref: RDSDBParameterGroup
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+      Engine: aurora
+      PubliclyAccessible: "true"
+    Type: "AWS::RDS::DBInstance"
+  RDSDBParameterGroup:
+    Properties:
+      Description: "CloudFormation Sample Aurora Parameter Group"
+      Family: aurora5.6
+      Parameters:
+        sql_mode: IGNORE_SPACE
+    Type: "AWS::RDS::DBParameterGroup"
+  ECSCluster:
+    Type: 'AWS::ECS::Cluster'
+    Properties:
+      ClusterName: ECSCluster
+  service:
+    Type: AWS::ECS::Service
+    Properties:
+      TaskDefinition:
+        Ref: TaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      Cluster:
+        Ref: ECSCluster
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          # change to DISABLED if you're using private subnets that have access to a NAT gateway
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref SubnetA
+            - !Ref SubnetB
+          SecurityGroups:
+            - !Ref ContainerSecurityGroup
+  ECSServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole'
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - "FARGATE"
+      Cpu: 256
+      Memory: 0.5GB
+      ExecutionRoleArn:
+        Ref: ExecutionRole
+      TaskRoleArn:
+        Ref: TaskRole
+      ContainerDefinitions:
+        -
+          Name: "cd-weather-app"
+          MountPoints:
+            -
+              SourceVolume: "cd-source-vol"
+              ContainerPath: "/var/www/cd-source-vol"
+          Image:
+            Ref: ImagePath
+          PortMappings:
+            - ContainerPort:
+                Ref: ContainerPort
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: ecs
+      Volumes:
+        -
+          Name: "cd-source-vol"
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: ecs-log-group
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['', [!Ref ServiceName, ExecutionRole]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+  # A role for the containers
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['', [!Ref ServiceName, TaskRole]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Join ['', [!Ref ServiceName, ContainerSecurityGroup]]
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          CidrIp: 0.0.0.0/0

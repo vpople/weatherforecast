@@ -1,0 +1,7 @@
+build
+.dockerignore
+.vs
+backup
+bin
+obj
+ForecastData
